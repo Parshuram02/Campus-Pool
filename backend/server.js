@@ -35,8 +35,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_message', async (data) => {
-        console.log('Received message data:', data); // Debugging
-        // data: { rideId, senderId, content }
         const { rideId, senderId, content } = data;
 
         if (!senderId) {

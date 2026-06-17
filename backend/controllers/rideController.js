@@ -33,10 +33,10 @@ exports.createRide = async (req, res) => {
     }
 };
 
-// @desc    Get all active rides (with filters & sorting)
+// @desc    Get all active rides (with filters, sorting & pagination)
 exports.getAllRides = async (req, res) => {
     try {
-        const { destination, sortBy } = req.query;
+        const { destination, sortBy, page = 1, limit = 20 } = req.query;
 
         // Filter: Status Open AND Not Expired
         let query = {
@@ -56,12 +56,37 @@ exports.getAllRides = async (req, res) => {
         if (sortBy === 'time') sortOptions = { departureTime: 1 };
         if (sortBy === 'place') sortOptions = { destination: 1 };
 
-        const rides = await Ride.find(query)
-            .populate('admin', ['name', 'branch', 'gender'])
-            .populate('requests.user', 'name email branch')
-            .sort(sortOptions);
+        const pageNum = Math.max(parseInt(page), 1);
+        const limitNum = Math.max(parseInt(limit), 1);
 
-        res.json(rides);
+        const [rides, total] = await Promise.all([
+            Ride.find(query)
+                .populate('admin', ['name', 'branch', 'gender'])
+                .populate('requests.user', 'name email branch')
+                .sort(sortOptions)
+                .skip((pageNum - 1) * limitNum)
+                .limit(limitNum),
+            Ride.countDocuments(query)
+        ]);
+
+        res.json({ rides, total, page: pageNum, pages: Math.ceil(total / limitNum) });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Get a single ride by id
+// @route   GET /api/rides/:id
+exports.getRideById = async (req, res) => {
+    try {
+        const ride = await Ride.findById(req.params.id)
+            .populate('admin', ['name', 'branch', 'gender'])
+            .populate('requests.user', 'name email branch');
+
+        if (!ride) return res.status(404).json({ msg: 'Ride not found' });
+
+        res.json(ride);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -115,6 +140,9 @@ exports.handleRequest = async (req, res) => {
 
         const request = ride.requests.id(req.params.requestId);
         if (!request) return res.status(404).json({ msg: 'Request not found' });
+        if (request.status !== 'pending') {
+            return res.status(400).json({ msg: 'Request already handled' });
+        }
 
         if (status === 'accepted') {
             if (ride.currentOccupancy >= ride.maxSeats) {

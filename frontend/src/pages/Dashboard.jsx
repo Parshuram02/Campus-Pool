@@ -1,9 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
 import RideCard from '../components/RideCard';
+import Navbar from '../components/Navbar';
+import AuthContext from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Plus, X, Car } from 'lucide-react';
 
 const Dashboard = () => {
+    const { user, loading: authLoading } = useContext(AuthContext);
+    const navigate = useNavigate();
+    const { showToast } = useToast();
     const [rides, setRides] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -26,25 +33,32 @@ const Dashboard = () => {
         try {
             setLoading(true);
             const res = await API.get(`/rides?sortBy=${sortBy}`);
-            setRides(res.data);
+            setRides(res.data.rides ?? res.data);
         } catch (err) {
-            console.error("Error fetching rides", err);
+            showToast("Couldn't load rides. Try again.", 'error');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchRides();
-    }, [sortBy]);
+        if (!authLoading && !user) {
+            navigate('/login');
+        }
+    }, [user, authLoading, navigate]);
+
+    useEffect(() => {
+        if (user) fetchRides();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortBy, user]);
 
     // 2. Handle Joining a Ride
     const handleJoin = async (id) => {
         try {
             await API.post(`/rides/${id}/request`);
-            alert("Success: Join request sent to the Admin!");
+            showToast('Join request sent to the host!');
         } catch (err) {
-            alert(err.response?.data?.msg || "Failed to send request");
+            showToast(err.response?.data?.msg || 'Failed to send request', 'error');
         }
     };
 
@@ -55,6 +69,7 @@ const Dashboard = () => {
             await API.post('/rides', newRide);
             setShowModal(false); // Close modal
             fetchRides(); // Refresh the list
+            showToast('Ride posted!');
             // Reset form
             setNewRide({
                 source: '',
@@ -66,12 +81,17 @@ const Dashboard = () => {
                 expiryDuration: 1
             });
         } catch (err) {
-            alert(err.response?.data?.msg || "Error creating ride");
+            showToast(err.response?.data?.msg || 'Error creating ride', 'error');
         }
     };
 
+    if (authLoading || !user) return <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>;
+
     return (
         <div className="min-h-screen bg-gray-50">
+            <Navbar />
             <main className="max-w-6xl mx-auto p-6 space-y-8">
                 {/* Hero Section */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">

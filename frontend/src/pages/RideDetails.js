@@ -1,49 +1,55 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import AuthContext from '../context/AuthContext';
 import io from 'socket.io-client';
+import API, { SOCKET_URL } from '../services/api';
+import AuthContext from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import Navbar from '../components/Navbar';
+import { Calculator, Check, MapPin, Pencil, Send, Users, X } from 'lucide-react';
 
 const RideDetails = () => {
     const { id } = useParams();
-    const { user, loading } = useContext(AuthContext);
-    console.log('Current User Context:', user); // Debugging user ID issue
+    const { user, loading: authLoading } = useContext(AuthContext);
+    const { showToast } = useToast();
     const navigate = useNavigate();
     const [ride, setRide] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const socket = useRef();
     const [calculatedShare, setCalculatedShare] = useState(null);
+    const [totalFare, setTotalFare] = useState('');
+    const [editingSeats, setEditingSeats] = useState(false);
+    const [seatsInput, setSeatsInput] = useState('');
 
     useEffect(() => {
-        if (!loading && !user) {
+        if (!authLoading && !user) {
             navigate('/login');
         }
-    }, [user, loading, navigate]);
+    }, [user, authLoading, navigate]);
+
+    const fetchRide = async () => {
+        try {
+            const res = await API.get(`/rides/${id}`);
+            setRide(res.data);
+        } catch (err) {
+            showToast('Could not load this ride', 'error');
+        }
+    };
 
     useEffect(() => {
-        const fetchRide = async () => {
-            const res = await axios.get(`http://localhost:5000/api/rides`); // Should fetch single ride, need endpoint
-            // filtering client side for now as I didn't make getSingleRide endpoint
-            const r = res.data.find(r => r._id === id);
-            setRide(r);
-        };
         fetchRide();
 
-        // Fetch Chat History
         const fetchChat = async () => {
             try {
-                const res = await axios.get(`http://localhost:5000/api/chat/${id}`);
+                const res = await API.get(`/chat/${id}`);
                 setMessages(res.data);
             } catch (err) {
-                console.error(err);
+                showToast('Could not load chat history', 'error');
             }
         };
         fetchChat();
 
-        // Socket Setup
-        socket.current = io('http://localhost:5000');
+        socket.current = io(SOCKET_URL);
         socket.current.emit('join_ride', id);
 
         socket.current.on('receive_message', (msg) => {
@@ -51,201 +57,203 @@ const RideDetails = () => {
         });
 
         return () => socket.current.disconnect();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
-        if (!user) return;
+        if (!user || !newMessage.trim()) return;
         const senderId = user._id || user.id;
-        if (!senderId) {
-            console.error('SENDER ID IS MISSING!');
-            return;
-        }
-        const msgData = {
-            rideId: id,
-            senderId: senderId,
-            content: newMessage
-        };
-
-        await socket.current.emit('send_message', msgData);
-        // Optimistic UI update
-        // setMessages(prev => [...prev, { ...msgData, sender: user }]); // Socket will echo back usually or we handle it
+        socket.current.emit('send_message', { rideId: id, senderId, content: newMessage });
         setNewMessage('');
     };
 
     const handleRequest = async () => {
         try {
-            await axios.post(`http://localhost:5000/api/rides/${id}/request`);
-            alert('Request Sent!');
+            await API.post(`/rides/${id}/request`);
+            showToast('Request sent!');
         } catch (err) {
-            alert(err.response.data.msg);
+            showToast(err.response?.data?.msg || 'Failed to send request', 'error');
         }
     };
 
     const handleApproval = async (requestId, status) => {
         try {
-            await axios.put(`http://localhost:5000/api/rides/${id}/request/${requestId}`, { status });
-            // Refresh ride data
-            const res = await axios.get(`http://localhost:5000/api/rides`); // efficient? no. working? yes.
-            const r = res.data.find(r => r._id === id);
-            setRide(r);
+            await API.put(`/rides/${id}/request/${requestId}`, { status });
+            showToast(`Request ${status}`);
+            fetchRide();
         } catch (err) {
-            alert(err.response.data.msg);
+            showToast(err.response?.data?.msg || 'Failed to update request', 'error');
         }
     };
 
-    if (loading || !ride || !user) return <div>Loading...</div>;
+    const submitSeats = async (e) => {
+        e.preventDefault();
+        if (!seatsInput || isNaN(seatsInput)) return;
+        try {
+            await API.put(`/rides/${id}`, { maxSeats: seatsInput });
+            setRide(prev => ({ ...prev, maxSeats: seatsInput }));
+            setEditingSeats(false);
+            showToast('Seats updated!');
+        } catch (err) {
+            showToast('Failed to update seats', 'error');
+        }
+    };
 
-    // Relaxed check: compare as strings to avoid ObjectId vs String issues
-    const isAdmin = user && (ride.admin?._id || ride.admin).toString() === (user._id || user.id).toString();
-    console.log('DEBUG: RideDetails isAdmin Check');
-    console.log('User:', user);
-    console.log('Ride Admin:', ride.admin);
-    console.log('Comparison:', ride.admin?._id, '===', user?._id);
-    console.log('Is Admin Result:', isAdmin);
+    const calculateShare = () => {
+        if (!totalFare || ride.currentOccupancy <= 0) return;
+        const share = (totalFare / ride.currentOccupancy).toFixed(2);
+        setCalculatedShare(share);
+
+        const senderId = user._id || user.id;
+        socket.current.emit('send_message', {
+            rideId: id,
+            senderId,
+            content: `Fare update: total ₹${totalFare} split ${ride.currentOccupancy} ways — each person pays ₹${share}.`
+        });
+    };
+
+    if (authLoading || !ride || !user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    const isAdmin = (ride.admin?._id || ride.admin).toString() === (user._id || user.id).toString();
 
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
-            <div className="container mx-auto p-4 flex gap-4">
+            <div className="max-w-6xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: Ride Info & Requests */}
-                <div className="w-2/3 space-y-4">
-                    <div className="bg-white p-6 rounded shadow relative">
-                        <h2 className="text-2xl font-bold">{ride.source} → {ride.destination}</h2>
-                        <p>Date: {new Date(ride.departureTime).toLocaleString()}</p>
-                        <p>Host: {ride.admin?.name || 'Unknown'}</p>
-                        <p>Gender Filter: {ride.genderFilter}</p>
-                        <p className="mt-2 font-bold text-blue-600">
-                            Seats: {ride.currentOccupancy} / {ride.maxSeats}
-                        </p>
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative">
+                        <div className="flex items-start gap-3 mb-4">
+                            <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600">
+                                <MapPin size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900">{ride.source} → {ride.destination}</h2>
+                                <p className="text-sm text-gray-500">{new Date(ride.departureTime).toLocaleString()}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-xl mb-4">
+                            <span><strong className="text-gray-800">Host:</strong> {ride.admin?.name || 'Unknown'}</span>
+                            <span className="flex items-center gap-1.5"><Users size={16} className="text-indigo-500" /> {ride.currentOccupancy}/{ride.maxSeats} seats</span>
+                            {ride.genderFilter === 'female-only' && (
+                                <span className="text-pink-600 font-bold">Female Only</span>
+                            )}
+                        </div>
 
                         {!isAdmin && (
-                            <button onClick={handleRequest} className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded">
+                            <button onClick={handleRequest} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-md shadow-indigo-100 transition-all">
                                 Request to Join
                             </button>
                         )}
 
-                        {isAdmin && (
+                        {isAdmin && !editingSeats && (
                             <button
-                                onClick={async () => {
-                                    const newSeats = prompt("Enter new Total Seats:", ride.maxSeats);
-                                    if (newSeats && !isNaN(newSeats)) {
-                                        try {
-                                            await axios.put(`http://localhost:5000/api/rides/${id}`, { maxSeats: newSeats });
-                                            setRide(prev => ({ ...prev, maxSeats: newSeats }));
-                                            alert("Seats updated!");
-                                        } catch (err) {
-                                            alert("Failed to update seats");
-                                        }
-                                    }
-                                }}
-                                className="absolute top-6 right-6 text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-gray-700"
+                                onClick={() => { setSeatsInput(ride.maxSeats); setEditingSeats(true); }}
+                                className="absolute top-6 right-6 flex items-center gap-1.5 text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-gray-600 transition-colors"
                             >
-                                ✏️ Edit Seats
+                                <Pencil size={14} /> Edit Seats
                             </button>
+                        )}
+
+                        {isAdmin && editingSeats && (
+                            <form onSubmit={submitSeats} className="absolute top-6 right-6 flex items-center gap-1.5">
+                                <input
+                                    type="number" min="1" max="7" autoFocus
+                                    value={seatsInput}
+                                    onChange={e => setSeatsInput(e.target.value)}
+                                    className="w-16 p-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                                <button type="submit" className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"><Check size={16} /></button>
+                                <button type="button" onClick={() => setEditingSeats(false)} className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200"><X size={16} /></button>
+                            </form>
                         )}
                     </div>
 
                     {isAdmin && (
-                        <div className="bg-white p-6 rounded shadow">
-                            <h3 className="text-xl font-bold mb-2">Requests</h3>
-                            {ride.requests.map(req => (
-                                <div key={req._id} className="flex justify-between items-center border-b py-2">
-                                    <span>{req.user?.name || 'Unknown'} ({req.user?.branch || 'N/A'})</span>
-                                    <span>Status: {req.status}</span>
-                                    {req.status === 'pending' && (
-                                        <div className="gap-2 flex">
-                                            <button onClick={() => handleApproval(req._id, 'accepted')} className="bg-green-500 text-white px-2 py-1 rounded">Accept</button>
-                                            <button onClick={() => handleApproval(req._id, 'rejected')} className="bg-red-500 text-white px-2 py-1 rounded">Reject</button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                            {ride.requests.length === 0 && <p>No pending requests.</p>}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-3">Join Requests</h3>
+                            {ride.requests.length === 0 && <p className="text-gray-500 text-sm">No pending requests.</p>}
+                            <div className="space-y-2">
+                                {ride.requests.map(req => (
+                                    <div key={req._id} className="flex justify-between items-center bg-gray-50 rounded-xl p-3">
+                                        <span className="text-sm font-medium text-gray-700">{req.user?.name || 'Unknown'} <span className="text-gray-400">({req.user?.branch || 'N/A'})</span></span>
+                                        {req.status === 'pending' ? (
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleApproval(req._id, 'accepted')} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Accept</button>
+                                                <button onClick={() => handleApproval(req._id, 'rejected')} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">Reject</button>
+                                            </div>
+                                        ) : (
+                                            <span className={`text-xs font-bold capitalize ${req.status === 'accepted' ? 'text-green-600' : 'text-red-500'}`}>{req.status}</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 
-
-
-                    {/* Fare Split Calculator (Admin Only) */}
                     {isAdmin && (
-                        <div className="bg-white p-6 rounded shadow mt-4">
-                            <h3 className="text-xl font-bold mb-2">Fare Split Calculator</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Total Trip Fare (₹)</label>
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2"><Calculator size={20} className="text-purple-600" /> Fare Split Calculator</h3>
+                            <div className="flex items-end gap-3">
+                                <div className="flex-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Total Trip Fare (₹)</label>
                                     <input
                                         type="number"
-                                        className="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={totalFare}
+                                        onChange={e => setTotalFare(e.target.value)}
                                         placeholder="e.g. 500"
-                                        id="totalFareInput"
+                                        className="w-full mt-1 p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
                                     />
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm text-gray-500">
-                                        Splitting between <span className="font-bold">{ride.currentOccupancy}</span> people (including you).
-                                    </p>
-                                    <button
-                                        onClick={() => {
-                                            const total = document.getElementById('totalFareInput').value;
-                                            if (total && ride.currentOccupancy > 0) {
-                                                const share = (total / ride.currentOccupancy).toFixed(2);
-                                                setCalculatedShare(share);
-
-                                                // Optional: Send this as a chat message
-                                                const senderId = user._id || user.id;
-                                                if (senderId) {
-                                                    const msgData = {
-                                                        rideId: id,
-                                                        senderId: senderId,
-                                                        content: `ADMIN UPDATE: Total Fare is ₹${total}. Each person pays ₹${share}.`
-                                                    };
-                                                    socket.current.emit('send_message', msgData);
-                                                }
-                                            }
-                                        }}
-                                        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 font-bold"
-                                    >
-                                        Calculate & Share
-                                    </button>
-                                </div>
-                                {calculatedShare && (
-                                    <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded text-center">
-                                        <p className="text-lg text-purple-900">
-                                            Each person pays: <span className="font-black text-2xl">₹{calculatedShare}</span>
-                                        </p>
-                                    </div>
-                                )}
+                                <button onClick={calculateShare} className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-xl font-bold transition-all">
+                                    Calculate
+                                </button>
                             </div>
+                            <p className="text-sm text-gray-500 mt-2">Splitting between {ride.currentOccupancy} people (including host).</p>
+                            {calculatedShare && (
+                                <div className="mt-4 p-4 bg-purple-50 border border-purple-100 rounded-xl text-center">
+                                    <p className="text-purple-900">Each person pays <span className="font-black text-2xl">₹{calculatedShare}</span></p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
                 {/* Right: Chat */}
-                <div className="w-1/3 bg-white p-4 rounded shadow flex flex-col h-[500px]">
-                    <h3 className="text-xl font-bold mb-2 border-b pb-2">Ride Chat</h3>
-                    <div className="flex-1 overflow-y-auto space-y-2 p-2">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col h-[600px]">
+                    <h3 className="text-lg font-bold text-gray-900 mb-3 border-b border-gray-100 pb-3">Ride Chat</h3>
+                    <div className="flex-1 overflow-y-auto space-y-2 p-1">
                         {messages.map((m, idx) => {
                             const sender = m.sender || {};
-                            const isMyMessage = user && (sender === user._id || sender._id === user._id);
-                            const senderName = sender.name || 'User';
+                            const senderId = sender._id || sender;
+                            const myId = user._id || user.id;
+                            const isMyMessage = senderId?.toString() === myId?.toString();
                             return (
-                                <div key={idx} className={`p-2 rounded max-w-[80%] ${isMyMessage ? 'bg-indigo-100 self-end ml-auto' : 'bg-gray-100 mr-auto'}`}>
-                                    <p className="text-xs font-bold text-gray-500">{senderName}</p>
+                                <div key={idx} className={`p-3 rounded-xl max-w-[85%] text-sm ${isMyMessage ? 'bg-indigo-600 text-white ml-auto' : 'bg-gray-100 text-gray-800'}`}>
+                                    {!isMyMessage && <p className="text-xs font-bold opacity-70 mb-0.5">{sender.name || 'User'}</p>}
                                     <p>{m.content}</p>
                                 </div>
                             );
                         })}
+                        {messages.length === 0 && <p className="text-gray-400 text-sm text-center mt-6">No messages yet. Say hi!</p>}
                     </div>
-                    <form onSubmit={sendMessage} className="mt-2 flex">
+                    <form onSubmit={sendMessage} className="mt-3 flex gap-2">
                         <input
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
-                            className="flex-1 border rounded-l px-2 py-1"
+                            className="flex-1 bg-gray-50 border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                             placeholder="Type a message..."
                         />
-                        <button type="submit" className="bg-indigo-600 text-white px-4 rounded-r">Send</button>
+                        <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-xl"><Send size={18} /></button>
                     </form>
                 </div>
             </div>

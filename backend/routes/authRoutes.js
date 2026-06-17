@@ -1,13 +1,20 @@
 const express = require('express');
 const router = express.Router();
-// Import BOTH registerUser and loginUser from the controller
-const { registerUser, loginUser } = require('../controllers/authController');
+const auth = require('../middleware/auth');
+const { registerUser, loginUser, getUser, getProfileStats } = require('../controllers/authController');
 
 // @route   POST api/auth/register
 router.post('/register', registerUser);
 
 // @route   POST api/auth/login
-// THIS WAS MISSING:
 router.post('/login', loginUser);
+
+// @route   GET api/auth/user
+// @desc    Get the logged-in user's own profile
+router.get('/user', auth, getUser);
+
+// @route   GET api/auth/profile/:id
+// @desc    Get a user's profile stats (hosted/joined ride counts)
+router.get('/profile/:id', auth, getProfileStats);
 
 module.exports = router;

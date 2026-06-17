@@ -1,14 +1,11 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const Ride = require('./models/Ride');
-const User = require('./models/User');
+const Ride = require('../models/Ride');
+const User = require('../models/User');
 
 dotenv.config();
 
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(async () => {
+mongoose.connect(process.env.MONGO_URI).then(async () => {
     console.log('MongoDB Connected for Seeding');
 
     // 1. Find a user to be the host
@@ -20,6 +17,7 @@ mongoose.connect(process.env.MONGO_URI, {
                 name: "Test User",
                 email: "test@example.com",
                 password: "password123",
+                registrationNo: "21124",
                 branch: "Comp",
                 year: "TE",
                 gender: "Male",
@@ -49,6 +47,14 @@ mongoose.connect(process.env.MONGO_URI, {
         costPerPerson: 50,
         typeOfVehicle: "Auto",
         members: [host._id],
+        fromCoordinates: {
+            type: "Point",
+            coordinates: [73.8567, 18.5204]
+        },
+        toCoordinates: {
+            type: "Point",
+            coordinates: [73.9580, 18.5620]
+        },
         status: "open"
     });
 

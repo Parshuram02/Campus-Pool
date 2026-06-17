@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+export const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+
 const API = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
 });
 
 // This attaches your JWT token to every request automatically

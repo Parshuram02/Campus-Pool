@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Clock, Users, IndianRupee, Car, Bike, Zap } from 'lucide-react';
+import { Clock, Users, Car, Bike, Zap } from 'lucide-react';
 
 const RideCard = ({ ride, onJoin }) => {
     const navigate = useNavigate();
