@@ -16,7 +16,10 @@ const io = new Server(server, {
 const Chat = require('./models/Chat');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin:process.env.Frontend_URL
+    
+}));
 app.use(express.json());
 app.use((req, res, next) => {
     console.log(`${req.method} request for '${req.url}'`);
