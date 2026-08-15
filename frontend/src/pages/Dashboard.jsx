@@ -5,17 +5,19 @@ import RideCard from '../components/RideCard';
 import Navbar from '../components/Navbar';
 import AuthContext from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Plus, X, Car } from 'lucide-react';
+import { Plus, X, Car, Search, ArrowRight } from 'lucide-react';
 
 const Dashboard = () => {
     const { user, loading: authLoading } = useContext(AuthContext);
     const navigate = useNavigate();
     const { showToast } = useToast();
     const [rides, setRides] = useState([]);
+    const [filteredRides, setFilteredRides] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // State for the "Create Ride" form
+    // Form state for creating a new ride
     const [newRide, setNewRide] = useState({
         source: '',
         destination: '',
@@ -23,7 +25,7 @@ const Dashboard = () => {
         maxSeats: 3,
         costPerPerson: '',
         typeOfVehicle: 'Uber Go',
-        expiryDuration: 1 // Default 1 hour
+        expiryDuration: 1
     });
 
     const [sortBy, setSortBy] = useState('time'); // time, price, place, seats
@@ -33,9 +35,11 @@ const Dashboard = () => {
         try {
             setLoading(true);
             const res = await API.get(`/rides?sortBy=${sortBy}`);
-            setRides(res.data.rides ?? res.data);
+            const data = res.data.rides ?? res.data;
+            setRides(data);
+            setFilteredRides(data);
         } catch (err) {
-            showToast("Couldn't load rides. Try again.", 'error');
+            showToast("Couldn't load rides. Please refresh.", 'error');
         } finally {
             setLoading(false);
         }
@@ -52,13 +56,28 @@ const Dashboard = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sortBy, user]);
 
+    // Handle Search Filtering
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setFilteredRides(rides);
+        } else {
+            const query = searchQuery.toLowerCase();
+            const filtered = rides.filter(r => 
+                r.source?.toLowerCase().includes(query) || 
+                r.destination?.toLowerCase().includes(query) ||
+                r.typeOfVehicle?.toLowerCase().includes(query)
+            );
+            setFilteredRides(filtered);
+        }
+    }, [searchQuery, rides]);
+
     // 2. Handle Joining a Ride
     const handleJoin = async (id) => {
         try {
             await API.post(`/rides/${id}/request`);
-            showToast('Join request sent to the host!');
+            showToast('Join request sent to host successfully!');
         } catch (err) {
-            showToast(err.response?.data?.msg || 'Failed to send request', 'error');
+            showToast(err.response?.data?.msg || 'Failed to send join request', 'error');
         }
     };
 
@@ -67,10 +86,9 @@ const Dashboard = () => {
         e.preventDefault();
         try {
             await API.post('/rides', newRide);
-            setShowModal(false); // Close modal
-            fetchRides(); // Refresh the list
-            showToast('Ride posted!');
-            // Reset form
+            setShowModal(false);
+            fetchRides();
+            showToast('Ride posted successfully!');
             setNewRide({
                 source: '',
                 destination: '',
@@ -85,144 +103,259 @@ const Dashboard = () => {
         }
     };
 
-    if (authLoading || !user) return <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    </div>;
+    if (authLoading || !user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-10 h-10 border-3 border-black border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm font-semibold text-neutral-500">Loading Campus Pool...</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <main className="max-w-6xl mx-auto p-6 space-y-8 bg-red">
-                {/* Hero Section */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl -ml-10 -mb-10"></div>
+        <div className="min-h-screen bg-[#F8F9FA] text-neutral-900 font-sans selection:bg-black selection:text-white flex flex-col">
+            <Navbar onOpenHostModal={() => setShowModal(true)} />
 
-                    <div className="relative z-10 max-w-2xl">
-                        <h2 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">
-                            Share RIdes, <br />
-                            <span className="text-blue-200">Save Money.</span>
-                        </h2>
-                        <p className="text-blue-100 text-lg mb-8 max-w-md leading-relaxed">
-                            Connect with fellow students for safe, affordable, and eco-friendly rides to and from campus.
-                        </p>
-                        <button
-                            onClick={() => setShowModal(true)}
-                            className="bg-white text-indigo-600 px-8 py-3.5 rounded-full font-bold text-lg hover:bg-blue-50 hover:scale-105 transition-all shadow-xl flex items-center gap-2 group"
-                        >
-                            <Plus className="group-hover:rotate-90 transition-transform" size={24} />
-                            Host a New Ride
-                        </button>
+            {/* HERO - clean editorial layout with subtle grayish background */}
+            <section className="relative overflow-hidden border-b border-neutral-200 bg-gradient-to-b from-[#F3F4F7] via-[#EAECEF] to-[#E2E5EC] text-neutral-900">
+                <div className="relative max-w-7xl mx-auto min-h-[560px] px-6 md:px-12 lg:px-8 flex items-center">
+                    <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] items-center gap-8 lg:gap-0 w-full py-16 md:py-20">
+                        {/* Copy */}
+                        <div className="relative z-10 max-w-xl text-left">
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-[-0.045em] text-neutral-950 leading-[1.02]">
+                                Go anywhere,
+                                <br />
+                                <span className="text-neutral-400">move the way you want</span>
+                            </h1>
+
+                            <p className="mt-6 max-w-lg text-base md:text-lg text-neutral-600 leading-7 text-left">
+                                Request a ride in minutes, hop in, and get to your destination safely, split travel costs, and connect with fellow students.
+                            </p>
+
+                            <div className="mt-8 flex flex-wrap items-center gap-3">
+                                <button
+                                    onClick={() => setShowModal(true)}
+                                    className="bg-black text-white px-7 py-4 rounded-xl font-semibold text-sm hover:bg-neutral-800 transition-all shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2.5 group"
+                                >
+                                    <span>Host a Ride</span>
+                                    <Plus size={17} className="group-hover:rotate-90 transition-transform duration-300" />
+                                </button>
+
+                                <button
+                                    onClick={() => document.getElementById('available-pools')?.scrollIntoView({ behavior: 'smooth' })}
+                                    className="bg-white/90 text-neutral-900 border border-neutral-300 px-7 py-4 rounded-xl font-semibold text-sm hover:bg-white transition-all shadow-sm flex items-center gap-2"
+                                >
+                                    <span>Explore Pools</span>
+                                    <ArrowRight size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* User's SVG Hero Illustration */}
+                        <div className="relative h-[360px] sm:h-[430px] lg:h-[520px] w-full flex items-center justify-end">
+                            <img
+                                src="/assets/ride-hero-map.svg"
+                                alt="Campus Pool Ride Map Illustration"
+                                className="h-full w-full object-contain object-right select-none pointer-events-none drop-shadow-md"
+                            />
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 pb-4">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                            Available Pools
-                            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">{rides.length}</span>
-                        </h2>
-                        <p className="text-gray-500 mt-1">Find students heading your way.</p>
-                    </div>
+            {/* MAIN CONTENT AREA - LIGHT SECTION */}
+            <main className="max-w-7xl mx-auto px-6 py-12 space-y-10 w-full flex-1">
+                {/* SEARCH & FILTER SECTION */}
+                <div id="available-pools" className="space-y-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-neutral-900 flex items-center gap-3">
+                                Available Pools
+                                <span className="bg-black text-white text-xs px-3 py-1 rounded-xl font-bold">
+                                    {filteredRides.length}
+                                </span>
+                            </h2>
+                            <p className="text-sm font-medium text-neutral-500 mt-1">
+                                Browse active student rides heading your way.
+                            </p>
+                        </div>
 
-                    <div className="flex gap-2 bg-gray-100 p-1.5 rounded-xl">
-                        {['time', 'price', 'place', 'seats'].map(type => (
-                            <button
-                                key={type}
-                                onClick={() => setSortBy(type)}
-                                className={`px-4 py-2 rounded-lg text-sm font-bold capitalize transition-all ${sortBy === type
-                                        ? 'bg-white text-indigo-600 shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                        {/* Sort Tabs */}
+                        <div className="flex items-center gap-1 bg-neutral-200/60 p-1.5 rounded-xl text-xs font-bold w-full md:w-auto overflow-x-auto">
+                            {[
+                                { key: 'time', label: 'Earliest' },
+                                { key: 'price', label: 'Price' },
+                                { key: 'place', label: 'Route' },
+                                { key: 'seats', label: 'Seats' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setSortBy(tab.key)}
+                                    className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
+                                        sortBy === tab.key
+                                        ? 'bg-white text-black shadow-sm'
+                                        : 'text-neutral-600 hover:text-black'
                                     }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Search Input Bar */}
+                    <div className="relative max-w-xl">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by pickup, destination, or vehicle..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3.5 bg-white border border-neutral-200 rounded-xl text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent shadow-sm transition-all"
+                        />
+                        {searchQuery && (
+                            <button 
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400 hover:text-black"
                             >
-                                {type === 'time' ? 'Earliest' : type}
+                                Clear
                             </button>
-                        ))}
+                        )}
                     </div>
                 </div>
 
+                {/* RIDES LIST FEED */}
                 {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <div className="flex flex-col justify-center items-center h-64 gap-3">
+                        <div className="w-8 h-8 border-3 border-black border-t-transparent rounded-full animate-spin"></div>
+                        <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Loading Rides...</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {rides.length > 0 ? (
-                            rides.map(ride => (
+                        {filteredRides.length > 0 ? (
+                            filteredRides.map(ride => (
                                 <RideCard key={ride._id} ride={ride} onJoin={handleJoin} />
                             ))
                         ) : (
-                            <div className="col-span-full bg-white p-12 rounded-3xl text-center border-2 border-dashed border-gray-200">
-                                <Car size={48} className="mx-auto text-gray-300 mb-4" />
-                                <p className="text-gray-500 text-lg">No rides found. Why not host one?</p>
+                            <div className="col-span-full bg-white p-14 rounded-2xl text-center border border-neutral-200/80 shadow-sm max-w-md mx-auto space-y-4">
+                                <div className="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center text-neutral-400 mx-auto">
+                                    <Car size={32} />
+                                </div>
+                                <h3 className="text-xl font-bold text-neutral-900">No pools found</h3>
+                                <p className="text-sm text-neutral-500 leading-relaxed">
+                                    There are currently no active ride pools matching your search. Be the first to host one!
+                                </p>
+                                <button
+                                    onClick={() => setShowModal(true)}
+                                    className="bg-black text-white px-7 py-3 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-md inline-flex items-center gap-2"
+                                >
+                                    <Plus size={16} />
+                                    Post a Ride
+                                </button>
                             </div>
                         )}
                     </div>
                 )}
             </main>
 
-            {/* Create Ride Modal */}
+            {/* CREATE RIDE MODAL - Glassmorphism */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b flex justify-between items-center bg-gray-50">
-                            <h2 className="text-xl font-bold text-gray-800">Post New Ride</h2>
-                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 transition">
-                                <X size={24} />
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl border border-neutral-100 animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                            <div>
+                                <h2 className="text-xl font-extrabold text-neutral-900">Post New Ride</h2>
+                                <p className="text-xs text-neutral-500 font-medium mt-0.5">Share your route and split travel costs</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowModal(false)} 
+                                className="w-8 h-8 rounded-xl bg-neutral-100 text-neutral-500 hover:text-black hover:bg-neutral-200 flex items-center justify-center transition-colors"
+                            >
+                                <X size={18} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateRide} className="p-6 space-y-4">
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Route</label>
-                                <div className="space-y-2 mt-1">
-                                    <input type="text" placeholder="From (e.g. AIT Gate)" className="w-full p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                        onChange={e => setNewRide({ ...newRide, source: e.target.value })} required />
-                                    <input type="text" placeholder="To (e.g. Airport)" className="w-full p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                        onChange={e => setNewRide({ ...newRide, destination: e.target.value })} required />
+                        {/* Form */}
+                        <form onSubmit={handleCreateRide} className="p-6 space-y-5">
+                            <div className="space-y-3">
+                                <label className="text-xs font-extrabold text-neutral-400 uppercase tracking-wider block">Route Details</label>
+                                <div className="space-y-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="From (e.g. AIT Campus Main Gate)" 
+                                        className="w-full p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-black focus:outline-none transition-all"
+                                        onChange={e => setNewRide({ ...newRide, source: e.target.value })} 
+                                        required 
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="To (e.g. Pune Station / Airport)" 
+                                        className="w-full p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-black focus:outline-none transition-all"
+                                        onChange={e => setNewRide({ ...newRide, destination: e.target.value })} 
+                                        required 
+                                    />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Departure</label>
-                                    <input type="datetime-local" className="w-full mt-1 p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                                        onChange={e => setNewRide({ ...newRide, departureTime: e.target.value })} required />
+                                    <label className="text-xs font-extrabold text-neutral-400 uppercase tracking-wider block mb-1.5">Departure Time</label>
+                                    <input 
+                                        type="datetime-local" 
+                                        className="w-full p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-black focus:outline-none transition-all"
+                                        onChange={e => setNewRide({ ...newRide, departureTime: e.target.value })} 
+                                        required 
+                                    />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Total Seats</label>
-                                    <input type="number" min="1" max="7" className="w-full mt-1 p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={newRide.maxSeats} onChange={e => setNewRide({ ...newRide, maxSeats: e.target.value })} required />
+                                    <label className="text-xs font-extrabold text-neutral-400 uppercase tracking-wider block mb-1.5">Total Seats</label>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="7" 
+                                        className="w-full p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-black focus:outline-none transition-all"
+                                        value={newRide.maxSeats} 
+                                        onChange={e => setNewRide({ ...newRide, maxSeats: e.target.value })} 
+                                        required 
+                                    />
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Estimated Cost (₹)</label>
-                                <input type="number" placeholder="Total fare to split" className="w-full mt-1 p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                    onChange={e => setNewRide({ ...newRide, costPerPerson: e.target.value })} required />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Expiry (Hrs)</label>
-                                    <input type="number" min="1" max="24" defaultValue="1" className="w-full mt-1 p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                        onChange={e => setNewRide({ ...newRide, expiryDuration: e.target.value })} />
+                                    <label className="text-xs font-extrabold text-neutral-400 uppercase tracking-wider block mb-1.5">Cost Per Person (₹)</label>
+                                    <input 
+                                        type="number" 
+                                        placeholder="e.g. 120" 
+                                        className="w-full p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-black focus:outline-none transition-all"
+                                        onChange={e => setNewRide({ ...newRide, costPerPerson: e.target.value })} 
+                                        required 
+                                    />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase ml-1">Vehicle Type</label>
-                                    <select className="w-full mt-1 p-3 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={newRide.typeOfVehicle} onChange={e => setNewRide({ ...newRide, typeOfVehicle: e.target.value })}>
+                                    <label className="text-xs font-extrabold text-neutral-400 uppercase tracking-wider block mb-1.5">Vehicle Type</label>
+                                    <select 
+                                        className="w-full p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-black focus:outline-none transition-all"
+                                        value={newRide.typeOfVehicle} 
+                                        onChange={e => setNewRide({ ...newRide, typeOfVehicle: e.target.value })}
+                                    >
                                         <option value="Uber Go">Uber Go</option>
-                                        <option value="Uber Premier">Premier</option>
+                                        <option value="Uber Premier">Uber Premier</option>
                                         <option value="Auto">Auto</option>
                                         <option value="Bike">Bike</option>
-                                        <option value="Personal">Personal</option>
+                                        <option value="Personal">Personal Vehicle</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 mt-4">
-                                Publish Ride
+                            <button 
+                                type="submit" 
+                                className="w-full bg-black hover:bg-neutral-800 text-white py-4 rounded-xl font-bold text-base transition-all shadow-xl hover:scale-[1.01] active:scale-[0.99] mt-2"
+                            >
+                                Publish Ride Listing
                             </button>
                         </form>
                     </div>

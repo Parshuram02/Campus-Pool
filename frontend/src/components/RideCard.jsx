@@ -1,88 +1,105 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Users, Car, Bike, Zap } from 'lucide-react';
+import { Clock, Users, Car, Bike, Zap, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const RideCard = ({ ride, onJoin }) => {
     const navigate = useNavigate();
 
-    // Helper to get icon and color based on vehicle type
+    // Helper for vehicle style
     const getVehicleStyle = (type) => {
         switch (type) {
-            case 'Bike': return { icon: <Bike size={20} />, color: 'bg-orange-100 text-orange-600', label: 'Bike' };
-            case 'Auto': return { icon: <Zap size={20} />, color: 'bg-yellow-100 text-yellow-700', label: 'Auto' };
-            case 'Uber Premier': return { icon: <Car size={20} />, color: 'bg-black text-white', label: 'Premier' };
-            default: return { icon: <Car size={20} />, color: 'bg-blue-100 text-blue-600', label: 'Car' };
+            case 'Bike': return { icon: <Bike size={16} />, bg: 'bg-amber-50 text-amber-700 border-amber-200/60', label: 'Bike' };
+            case 'Auto': return { icon: <Zap size={16} />, bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60', label: 'Auto' };
+            case 'Uber Premier': return { icon: <Car size={16} />, bg: 'bg-black text-white border-black', label: 'Premier' };
+            default: return { icon: <Car size={16} />, bg: 'bg-neutral-100 text-neutral-900 border-neutral-200', label: 'Uber Go' };
         }
     };
 
     const style = getVehicleStyle(ride.typeOfVehicle);
+    const seatsAvailable = ride.maxSeats - (ride.currentOccupancy || 0);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="flex justify-between items-start mb-4">
-                <div className={`p-2 rounded-xl ${style.color}`}>
-                    {style.icon}
-                </div>
-                <div className="text-right">
-                    <span className="text-2xl font-black text-gray-900">₹{ride.costPerPerson}</span>
-                    <p className="text-xs text-gray-400 font-medium">per person</p>
-                </div>
-            </div>
-
-            <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>
-                        <div className="w-0.5 h-8 bg-gray-200 border-l border-dashed"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+        <div className="bg-white rounded-2xl border border-black/[0.06] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:border-black/20 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <div>
+                {/* Header: Vehicle Tag & Price */}
+                <div className="flex justify-between items-center mb-5 pb-4 border-b border-neutral-100">
+                    <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold border ${style.bg}`}>
+                        {style.icon}
+                        <span>{ride.typeOfVehicle || 'Standard'}</span>
                     </div>
-                    <div className="flex-1 space-y-3">
-                        <div>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">From</p>
-                            <p className="font-bold text-gray-800">{ride.source}</p>
+                    <div className="text-right">
+                        <span className="text-2xl font-extrabold tracking-tight text-neutral-900">₹{ride.costPerPerson}</span>
+                        <span className="text-xs font-medium text-neutral-400 block">/ seat</span>
+                    </div>
+                </div>
+
+                {/* Route Timeline */}
+                <div className="space-y-4 mb-6">
+                    <div className="flex gap-3">
+                        <div className="flex flex-col items-center pt-1">
+                            <div className="w-3 h-3 rounded-full bg-black ring-4 ring-black/10"></div>
+                            <div className="w-0.5 h-10 bg-neutral-200 my-1"></div>
+                            <div className="w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-emerald-500/10"></div>
                         </div>
-                        <div>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">To</p>
-                            <p className="font-bold text-gray-800">{ride.destination}</p>
+                        <div className="flex-1 space-y-3">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">Pickup</p>
+                                <p className="font-bold text-neutral-900 text-base leading-snug">{ride.source}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">Drop-off</p>
+                                <p className="font-bold text-neutral-900 text-base leading-snug">{ride.destination}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="flex items-center gap-4 text-sm text-gray-600 mb-6 bg-gray-50 p-3 rounded-xl">
-                <div className="flex items-center gap-1.5">
-                    <Clock size={16} className="text-indigo-500" />
-                    <span className="font-medium">{new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <Users size={16} className="text-indigo-500" />
-                    <span className="font-medium">{ride.currentOccupancy}/{ride.maxSeats} Seats</span>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
-                        {ride.admin.name.charAt(0)}
+                {/* Meta details: Time & Seats */}
+                <div className="grid grid-cols-2 gap-2 bg-neutral-50/80 p-3 rounded-xl border border-neutral-100 text-xs mb-6">
+                    <div className="flex items-center gap-2 text-neutral-700 font-medium">
+                        <Clock size={15} className="text-neutral-400" />
+                        <span>{new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    <div className="text-xs">
-                        <p className="font-bold text-gray-900">{ride.admin.name}</p>
-                        <p className="text-gray-500">{ride.admin.branch || 'Student'}</p>
+                    <div className="flex items-center gap-2 text-neutral-700 font-medium">
+                        <Users size={15} className="text-neutral-400" />
+                        <span>{ride.currentOccupancy || 1}/{ride.maxSeats} Seats Filled</span>
                     </div>
                 </div>
+            </div>
 
-                <div className="flex items-center gap-2">
+            {/* Footer: Driver info & Actions */}
+            <div className="pt-4 border-t border-neutral-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center font-bold text-sm shrink-0">
+                        {ride.admin?.name ? ride.admin.name.charAt(0).toUpperCase() : 'H'}
+                    </div>
+                    <div className="truncate">
+                        <p className="font-bold text-neutral-900 text-xs truncate flex items-center gap-1">
+                            {ride.admin?.name || 'Host'}
+                            <ShieldCheck size={13} className="text-emerald-600 shrink-0" />
+                        </p>
+                        <p className="text-[11px] text-neutral-400 truncate">{ride.admin?.branch || 'Campus Verified'}</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
                     <button
                         onClick={() => navigate(`/ride/${ride._id}`)}
-                        className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors"
+                        className="px-3 py-2 text-xs font-bold text-neutral-600 hover:text-black hover:bg-neutral-100 rounded-xl transition-colors"
                     >
                         Details
                     </button>
                     <button
                         onClick={() => onJoin(ride._id)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-indigo-100 transition-all"
+                        disabled={seatsAvailable <= 0}
+                        className={`px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 ${
+                            seatsAvailable > 0
+                            ? 'bg-black hover:bg-neutral-800 text-white hover:scale-[1.03] active:scale-[0.98]'
+                            : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                        }`}
                     >
-                        Join
+                        {seatsAvailable > 0 ? 'Join' : 'Full'}
+                        <ArrowRight size={13} />
                     </button>
                 </div>
             </div>
