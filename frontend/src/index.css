@@ -1,3 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Mozilla+Text:wght@200..700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Mozilla Text', 'Urbanist', 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #F8F9FA;
+    color: #111827;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: 'Mozilla Text', 'Urbanist', 'Outfit', sans-serif;
+    letter-spacing: -0.025em;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+/* Perspective Grid Effect */
+.perspective-grid {
+  perspective: 1000px;
+}
+
+.perspective-tilt {
+  transform: rotateX(28deg) rotateZ(-12deg) scale(0.95);
+}
