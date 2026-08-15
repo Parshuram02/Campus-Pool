@@ -92,7 +92,7 @@ const Dashboard = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
-            <main className="max-w-6xl mx-auto p-6 space-y-8 bg-red">
+            <main className="max-w-6xl mx-auto p-6 space-y-8 bg-red-500">
                 {/* Hero Section */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
