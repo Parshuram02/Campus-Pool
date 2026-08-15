@@ -47,3 +47,45 @@
 .perspective-tilt {
   transform: rotateX(28deg) rotateZ(-12deg) scale(0.95);
 }
+
+/* SVG Driving Car Motion Path Animation */
+@keyframes driveAlongRoad {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  98% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes pulseLocationPin {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+.animate-drive-car {
+  offset-path: path('M-30 472C150 405 230 470 342 420C445 374 498 283 595 296C705 311 765 410 1015 324');
+  offset-rotate: auto;
+  animation: driveAlongRoad 6.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.animate-pulse-pin {
+  animation: pulseLocationPin 2.2s ease-in-out infinite;
+  transform-origin: center;
+}

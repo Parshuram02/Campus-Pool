@@ -120,8 +120,8 @@ const Dashboard = () => {
 
             {/* HERO - clean editorial layout with subtle grayish background */}
             <section className="relative overflow-hidden border-b border-neutral-200 bg-gradient-to-b from-[#F3F4F7] via-[#EAECEF] to-[#E2E5EC] text-neutral-900">
-                <div className="relative max-w-7xl mx-auto min-h-[560px] px-6 md:px-12 lg:px-8 flex items-center">
-                    <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] items-center gap-8 lg:gap-0 w-full py-16 md:py-20">
+                <div className="relative max-w-[1440px] mx-auto min-h-[620px] px-6 md:px-12 lg:px-10 flex items-center">
+                    <div className="grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] items-center gap-8 lg:gap-4 w-full py-12 md:py-16">
                         {/* Copy */}
                         <div className="relative z-10 max-w-xl text-left">
                             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-[-0.045em] text-neutral-950 leading-[1.02]">
@@ -153,13 +153,101 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {/* User's SVG Hero Illustration */}
-                        <div className="relative h-[360px] sm:h-[430px] lg:h-[520px] w-full flex items-center justify-end">
-                            <img
-                                src="/assets/ride-hero-map.svg"
-                                alt="Campus Pool Ride Map Illustration"
-                                className="h-full w-full object-contain object-right select-none pointer-events-none drop-shadow-md"
-                            />
+                        {/* User's Animated SVG Hero Map Illustration - Scaled up to occupy full right side */}
+                        <div className="relative h-[420px] sm:h-[520px] lg:h-[640px] w-full flex items-center justify-center lg:justify-end select-none">
+                            <svg viewBox="0 0 1000 620" fill="none" className="h-full w-full object-contain object-right drop-shadow-xl scale-105 sm:scale-110 lg:scale-120 transform origin-right">
+                                <defs>
+                                    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+                                        <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#111827" floodOpacity=".10"/>
+                                    </filter>
+                                    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="18"/>
+                                    </filter>
+                                </defs>
+
+                                {/* Soft map background terrain */}
+                                <path d="M50 130C210 45 370 90 490 155C625 228 720 180 950 92V550H40C95 445 150 355 50 130Z" fill="#EFEFEC"/>
+                                <path d="M650 40C760 15 850 28 975 78V245C875 206 790 225 705 176C650 144 615 93 650 40Z" fill="#E8E8E5"/>
+                                <path d="M65 390C215 335 315 355 400 420C490 488 575 492 690 420C780 364 875 360 970 405V580H35C20 500 28 445 65 390Z" fill="#F3F3F0"/>
+
+                                {/* Secondary branch road */}
+                                <path d="M280 50C305 160 378 208 476 236C562 261 617 238 700 188" stroke="#E0E0DC" strokeWidth="46" strokeLinecap="round"/>
+                                <path d="M280 50C305 160 378 208 476 236C562 261 617 238 700 188" stroke="#FAFAF8" strokeWidth="35" strokeLinecap="round"/>
+
+                                {/* Main highway road */}
+                                <path d="M-30 472C150 405 230 470 342 420C445 374 498 283 595 296C705 311 765 410 1015 324" stroke="#D7D7D3" strokeWidth="74" strokeLinecap="round"/>
+                                <path d="M-30 472C150 405 230 470 342 420C445 374 498 283 595 296C705 311 765 410 1015 324" stroke="#FCFCFB" strokeWidth="61" strokeLinecap="round"/>
+                                <path d="M-30 472C150 405 230 470 342 420C445 374 498 283 595 296C705 311 765 410 1015 324" stroke="#242424" strokeWidth="4" strokeLinecap="round" strokeDasharray="14 12" opacity=".85"/>
+
+                                {/* Buildings */}
+                                <g opacity=".85">
+                                    <path d="M112 170H145V253H112V170Z" fill="#D8D8D4"/>
+                                    <path d="M116 164H141V170H116V164Z" fill="#C8C8C4"/>
+                                    <path d="M182 112H225V220H182V112Z" fill="#E0E0DC"/>
+                                    <path d="M188 105H219V112H188V105Z" fill="#C9C9C5"/>
+                                    <path d="M790 132H830V214H790V132Z" fill="#D5D5D1"/>
+                                    <path d="M796 125H824V132H796V125Z" fill="#C5C5C1"/>
+                                    <path d="M875 260H914V342H875V260Z" fill="#DDDDD9"/>
+                                </g>
+
+                                {/* Trees */}
+                                <g>
+                                    <path d="M160 328L176 283L192 328H185V348H167V328H160Z" fill="#B8D88C"/>
+                                    <path d="M166 349H186" stroke="#A4A49F" strokeWidth="4" strokeLinecap="round"/>
+                                    <path d="M735 330L754 273L773 330H765V353H743V330H735Z" fill="#C1DE97"/>
+                                    <path d="M744 353H766" stroke="#A4A49F" strokeWidth="4" strokeLinecap="round"/>
+                                    <path d="M860 410L876 365L892 410H886V429H867V410H860Z" fill="#B7D68A"/>
+                                    <path d="M868 429H888" stroke="#A4A49F" strokeWidth="4" strokeLinecap="round"/>
+                                </g>
+
+                                {/* Point A - Pickup Location Pin (Pulsing) */}
+                                <g transform="translate(-10 0)" className="animate-pulse-pin">
+                                    <ellipse cx="60" cy="488" rx="20" ry="7" fill="#111827" opacity=".18" filter="url(#soft)"/>
+                                    <g filter="url(#shadow)">
+                                        <path d="M30 455C30 438 43 425 60 425C77 425 90 438 90 455C90 478 60 505 60 505C60 505 30 478 30 455Z" fill="#10B981"/>
+                                        <circle cx="60" cy="454" r="9" fill="white"/>
+                                        <text x="60" y="458" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="900" textAnchor="middle" fill="#10B981">A</text>
+                                    </g>
+                                </g>
+
+                                {/* Point B - Destination Location Pin (Pulsing) */}
+                                <g className="animate-pulse-pin" style={{ animationDelay: '0.8s' }}>
+                                    <ellipse cx="850" cy="350" rx="22" ry="7" fill="#111827" opacity=".18" filter="url(#soft)"/>
+                                    <g filter="url(#shadow)">
+                                        <path d="M820 310C820 291 834 277 852 277C870 277 884 291 884 310C884 335 852 366 852 366C852 366 820 335 820 310Z" fill="#171717"/>
+                                        <circle cx="852" cy="309" r="10" fill="white"/>
+                                        <text x="852" y="313" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="900" textAnchor="middle" fill="#171717">B</text>
+                                    </g>
+                                </g>
+
+                                {/* Floating Live Carpool Card Widget */}
+                                <g transform="translate(675 58) rotate(2)" filter="url(#shadow)">
+                                    <rect width="215" height="135" rx="18" fill="white"/>
+                                    <text x="18" y="27" fontFamily="Mozilla Text, sans-serif" fontSize="10" fontWeight="700" fill="#737373">LIVE CARPOOL</text>
+                                    <text x="18" y="49" fontFamily="Mozilla Text, sans-serif" fontSize="15" fontWeight="800" fill="#171717">AIT Pune ➔ Anywhere</text>
+                                    <path d="M24 92C62 76 96 104 137 83C151 76 160 71 171 72" stroke="#D8D8D4" strokeWidth="4" strokeLinecap="round"/>
+                                    <circle cx="24" cy="92" r="5" fill="#10B981"/>
+                                    <circle cx="171" cy="72" r="5" fill="#171717"/>
+                                    <text x="18" y="115" fontFamily="Mozilla Text, sans-serif" fontSize="9" fontWeight="700" fill="#10B981">● AIT Pune (A)</text>
+                                    <text x="126" y="115" fontFamily="Mozilla Text, sans-serif" fontSize="9" fontWeight="700" fill="#737373">Anywhere (B)</text>
+                                </g>
+
+                                {/* ANIMATED HERO CAR - Smooth Motion Path along Curve A ➔ B */}
+                                <g className="animate-drive-car" filter="url(#shadow)">
+                                    <g transform="scale(0.48) translate(-90, -45)">
+                                        <ellipse cx="90" cy="83" rx="82" ry="16" fill="#111827" opacity=".2"/>
+                                        <path d="M19 62L38 35C45 25 57 20 71 20H119C135 20 149 28 157 41L171 62H180C188 62 194 68 194 76V82C194 88 189 93 183 93H17C9 93 4 88 4 81V75C4 68 10 62 19 62Z" fill="#171717"/>
+                                        <path d="M54 27H113C125 27 134 32 141 42L151 57H42L54 27Z" fill="#333333"/>
+                                        <path d="M61 31L53 55H94V31H61Z" fill="#555555"/>
+                                        <path d="M99 31V55H145L137 42C132 35 124 31 113 31H99Z" fill="#444444"/>
+                                        <circle cx="44" cy="89" r="14" fill="#10B981"/>
+                                        <circle cx="44" cy="89" r="6" fill="white"/>
+                                        <circle cx="157" cy="89" r="14" fill="#10B981"/>
+                                        <circle cx="157" cy="89" r="6" fill="white"/>
+                                        <rect x="170" y="67" width="15" height="7" rx="3.5" fill="#FEE2E2"/>
+                                    </g>
+                                </g>
+                            </svg>
                         </div>
                     </div>
                 </div>
